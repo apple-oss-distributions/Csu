@@ -153,7 +153,10 @@ start:
 	addi	r27,r3,1	; calculate argc + 1 into r27
 	slwi	r27,r27,2	; calculate (argc + 1) * sizeof(char *) into r27
 	add	r5,r4,r27	; get address of env[0] into r5
-	bl	__start		; call _start(argc, argv, envp)
+	lis     r11,hi16(__start)       ; far call to _start
+	ori     r11,r11,lo16(__start)
+	mtctr   r11
+	bctr                    ; call _start(argc, argv, envp)
 	trap			; should never return
 
 	.stabs "",100,0,0,L_end

@@ -1,5 +1,8 @@
 OFLAG = -O
 CFLAGS = $(OFLAG) -g -Wall
+ifneq (,$(findstring ppc, $(RC_ARCHS)))
+CFLAGS += -mlong-branch
+endif
 IFLAGS = -S -S -c -m 444
 
 SRCROOT = .
