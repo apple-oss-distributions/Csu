@@ -34,7 +34,7 @@
 .symbol_stub 	/* only in executables with -mdynamic-no-pic */
 #endif
 
-#if defined(__m68k__) || defined(__i386__) || defined(__ppc__)
+#if defined(__m68k__) || defined(__i386__) || defined(__ppc__) || defined(__ppc64__)
 /*
  * C runtime startup for m68k, i386 & ppc
  *
@@ -42,7 +42,7 @@
  *
  *	| STRING AREA |
  *	+-------------+
-#if defined(__MACH30__) && (defined(__ppc__) || defined(__i386__))
+#if defined(__MACH30__) && (defined(__ppc__) || defined(__ppc64__) || defined(__i386__))
  *	+-------------+
  *	|      0      |	In MacOS X PR2 Beaker2E the path passed to exec() is
  *	+-------------+	passed on the stack just after the trailing 0 of the
@@ -68,12 +68,12 @@
  *	+-------------+
  *	|    arg[0]   |
  *	+-------------+
- * sp->	|     argc    |
+ * sp->	|     argc    | argc is always 4 bytes long, even in __ppc64__.
  *	+-------------+
  *
  *	Where arg[i] and env[i] point into the STRING AREA
  */
-#endif /* defined(__m68k__) || defined(__i386__) || defined(__ppc__) */
+#endif /* defined(__m68k__) || defined(__i386__) || defined(__ppc__) || defined(__ppc64__) */
 
 #ifdef __m68k__
 	.text
@@ -130,7 +130,8 @@ start:
 L_end:
 #endif /* __i386__ */
 
-#ifdef __ppc__
+#if defined(__ppc__) || defined(__ppc64__)
+#include <architecture/ppc/mode_independent_asm.h>
 	.text
 	.align 2
 L_start:
@@ -140,28 +141,33 @@ L_start:
 
 	.globl start
 start:
-	mr	r26,r1		; save original stack pointer into r26
-	subi	r1,r1,4		; jump over argc location
-	clrrwi	r1,r1,5		; align to 32 bytes
+	mr      r26,r1              ; save original stack pointer into r26
+	subi	r1,r1,GPR_BYTES     ; make space for linkage
+	clrrgi	r1,r1,5             ; align to 32 bytes (good enough for 32- and 64-bit APIs)
 
-	addi	r0,0,0		; load 0 into r0
-	stw	r0,0(r1)	; terminate initial stack frame
-	stwu	r1,-64(r1)	; allocate minimal stack frame
+	li      r0,0                ; load 0 into r0
+	stg     r0,0(r1)            ; terminate initial stack frame
+	stgu	r1,-SF_MINSIZE(r1)  ; allocate minimal stack frame
 
-	lwz	r3,0(r26)	; get argc into r3
-	addi	r4,r26,4	; get argv into r4
-	addi	r27,r3,1	; calculate argc + 1 into r27
-	slwi	r27,r27,2	; calculate (argc + 1) * sizeof(char *) into r27
-	add	r5,r4,r27	; get address of env[0] into r5
-	lis     r11,hi16(__start)       ; far call to _start
+	lwz     r3,0(r26)           ; get argc into r3
+       addi    r4,r26,GPR_BYTES    ; get argv into r4
+	addi	r27,r3,1            ; calculate argc + 1 into r27
+	slgi	r27,r27,LOG2_GPR_BYTES ; calculate (argc + 1) * sizeof(char *) into r27
+	add     r5,r4,r27           ; get address of env[0] into r5
+#ifdef __ppc64__
+	bl	__start		    ; 24-bt branch to __start.  ld64 will make a branch island if needed
+	trap                        ; should never return
+#else /* __ppc__ */
+	lis     r11,hi16(__start)   ; far call to _start
 	ori     r11,r11,lo16(__start)
 	mtctr   r11
-	bctr                    ; call _start(argc, argv, envp)
-	trap			; should never return
+	bctrl                       ; call _start(argc, argv, envp)
+	trap                        ; should never return
+#endif
 
 	.stabs "",100,0,0,L_end
 L_end:
-#endif /* __ppc__ */
+#endif /* __ppc__ || __ppc64__ */
 
 #ifdef __hppa__
 /*
