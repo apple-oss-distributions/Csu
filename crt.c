@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2006 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -35,6 +35,7 @@
  */
 
 #include <stddef.h>
+#include <AvailabilityMacros.h>
 
 /*
  * Global data definitions (initialized data).
@@ -44,7 +45,12 @@ const char**  NXArgv = NULL;
 const char**  environ = NULL;
 const char*   __progname = NULL;
 
-#if __DYNAMIC__
+
+/*
+ * This file is not needed for executables targeting 10.5 or later
+ * start calls main() directly.
+ */
+#if __DYNAMIC__ && (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5)
 /*
  * The following symbols are reference by System Framework symbolicly (instead
  * of through undefined references (to allow prebinding). To get strip(1) to
@@ -89,7 +95,6 @@ asm(".comm _receive_samples, 4");
 asm(".desc _receive_samples, 0x10");
 #endif /* __ppc__ || __i386__ */
 asm(".desc ___progname, 0x10");
-#endif /* __DYNAMIC__ */
 
 /*
  * Common data definitions.  If the routines in System Framework are not pulled
@@ -139,10 +144,9 @@ extern int _dyld_func_lookup(const char *dyld_func_name,unsigned long *address);
 extern void __keymgr_dwarf2_register_sections (void);
 #endif /* __DYNAMIC__ */
 
-#if __DYNAMIC__ && __ppc__
+#if __DYNAMIC__ && __ppc__ 
 static void _call_objcInit(void);
 #endif
-
 
 extern int errno;
 
@@ -203,7 +207,7 @@ _start(int argc, const char* argv[], const char* envp[])
         init();
 #endif
 
-#if __DYNAMIC__ && __ppc__
+#if __DYNAMIC__ && __ppc__ 
         _call_objcInit();
 #endif
 
@@ -258,7 +262,7 @@ crt_basename(const char *path)
     return last;
 }
 
-#if __DYNAMIC__ && __ppc__
+#if __DYNAMIC__ && __ppc__ 
 static 
 int
 crt_strbeginswith(const char *s1, const char *s2)
@@ -334,3 +338,5 @@ _call_objcInit(void)
 }
 
 #endif /* __DYNAMIC__ && __ppc__ */
+
+#endif /* __DYNAMIC__ && (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5) */

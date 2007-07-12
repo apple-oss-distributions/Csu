@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2006 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,6 +21,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
+#include <AvailabilityMacros.h>
 
 #if __ppc__ && __DYNAMIC__
 //
@@ -84,8 +86,18 @@ start:	mr      r26,r1              ; save original stack pointer into r26
 	addi	r27,r3,1            ; calculate argc + 1 into r27
 	slwi	r27,r27,2	    ; calculate (argc + 1) * sizeof(char *) into r27
 	add     r5,r4,r27           ; get address of env[0] into r5
+#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5	
 	bl	__start		    ; 24-bt branch to __start.  ld64 will make a branch island if needed
 	trap                        ; should never return
+#else
+	mr	r6,r5
+Lapple:	lwz	r0,0(r6)	    ; look for NULL ending env[] array
+	addi	r6,r6,4
+	cmpwi	r0,0
+	bne	Lapple		    ; once found, next pointer is "apple" parameter now in r6
+	bl	_main
+	b	_exit		    ; pass result from main() to exit()
+#endif
 #endif // __ppc__ 
 
 
@@ -101,8 +113,18 @@ start:	mr      r26,r1              ; save original stack pointer into r26
 	addi	r27,r3,1            ; calculate argc + 1 into r27
 	sldi	r27,r27,3	    ; calculate (argc + 1) * sizeof(char *) into r27
 	add     r5,r4,r27           ; get address of env[0] into r5
+#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5	
 	bl	__start		    ; 24-bt branch to __start.  ld64 will make a branch island if needed
 	trap                        ; should never return
+#else
+	mr	r6,r5
+Lapple:	ld	r0,0(r6)	    ; look for NULL ending env[] array
+	addi	r6,r6,8
+	cmpdi	r0,0
+	bne	Lapple		    ; once found, next pointer is "apple" parameter now in r6
+	bl	_main
+	b	_exit		    ; pass result from main() to exit()
+#endif
 #endif	// __ppc64__
 
 
@@ -119,8 +141,20 @@ start:	pushl	$0		    # push a zero for debugger end of frames marker
 	sall	$2,%ebx		    # * sizeof(char *)
 	addl	%ecx,%ebx	    # addr of env[0], envp, into %ebx
 	movl	%ebx,8(%esp)	    # envp to reserved stack word
+#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5	
 	call	__start		    # call _start(argc, argv, envp)
 	hlt			    # should never return
+#else
+Lapple:	movl	(%ebx),%eax	    # look for NULL ending env[] array
+	add	$4,%ebx
+	testl	%eax,%eax
+	jne	Lapple		    # once found, next pointer is "apple" parameter now in %ebx
+	movl	%ebx,12(%esp)	    # apple to reserved stack word
+	call	_main
+	movl	%eax, 0(%esp)	    # pass result from main() to exit() 
+	call	_exit		    # need to use call to keep stack aligned
+	hlt
+#endif
 #endif // __i386__ 
 
 
@@ -135,8 +169,21 @@ start:	pushq	$0		    # push a zero for debugger end of frames marker
 	addl	$1,%edx		    # argc + 1 for zero word
 	sall	$3,%edx		    # * sizeof(char *)
 	addq	%rsi,%rdx	    # addr of env[0], envp, into %rdx
+#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5	
 	call	__start		    # call _start(argc, argv, envp)
 	hlt			    # should never return
+#else
+	movq	%rdx,%rcx
+	jmp	Lapple2
+Lapple:	add	$8,%rcx
+Lapple2:cmpq	$0,(%rcx)	    # look for NULL ending env[] array
+	jne	Lapple		    
+	add	$8,%rcx		    # once found, next pointer is "apple" parameter now in %rcx
+	call	_main
+	movl	%eax,%edi	    # pass result from main() to exit() 
+	call	_exit		    # need to use call to keep stack aligned
+	hlt
+#endif
 #endif // __x86_64__ 
 
 

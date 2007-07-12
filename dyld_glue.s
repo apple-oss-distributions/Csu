@@ -218,7 +218,7 @@ dyld__mach_header:
 #if __ppc__
 	Ldyld_base_addr =	0x8fe00000
 #elif __ppc64__
-	Ldyld_base_addr =	0x0007ffff00000000
+	Ldyld_base_addr =	0x00007fff5fc00000
 #elif __i386__
 	Ldyld_base_addr =	0x8fe00000
 #elif __x86_64__
@@ -230,7 +230,13 @@ Ldyld_content_lazy_binder:
 	.pointer		Ldyld_base_addr + 0x1000
 Ldyld_content_func_lookup:
 	.pointer		Ldyld_base_addr + 0x1008
-
+#if CRT
+	.pointer		MACH_HEADER_SYMBOL_NAME
+	.pointer		_NXArgc
+	.pointer		_NXArgv
+	.pointer		_environ
+	.pointer		___progname
+#endif
 
 // This code has be written to allow dead code stripping
 	.subsections_via_symbols
