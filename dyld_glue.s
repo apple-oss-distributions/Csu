@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2006-2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -105,6 +105,34 @@ L1:	popl	%eax
 	leaq	___dso_handle(%rip), %r11
 	pushq	%r11
 	jmp		*Ldyld_content_lazy_binder(%rip)
+
+#elif __arm__
+	str	ip, [sp, #-4]!  // push address of lazy pointer
+	ldr	ip, Ldyld__mach_header_pointer
+#if __PIC__
+Ldyld__mach_header_pointer_base:
+	ldr	ip, [pc, ip]
+#endif
+	str	ip, [sp, #-4]!  // push address of mach header
+	ldr	ip, Ldyld_lazy_symbol_binding_entry_point
+#if __PIC__
+Ldyld_lazy_symbol_binding_entry_point_base:
+	ldr	pc, [pc, ip]    // jump to dyld_lazy_symbol_binding_entry_point
+#else
+	ldr	pc, [ip]
+#endif
+Ldyld__mach_header_pointer:
+#if __PIC__
+	.long	dyld__mach_header - (Ldyld__mach_header_pointer_base + 8)
+#else
+	.long	MACH_HEADER_SYMBOL_NAME
+#endif
+Ldyld_lazy_symbol_binding_entry_point:
+#if __PIC__
+	.long	Ldyld_content_lazy_binder - (Ldyld_lazy_symbol_binding_entry_point_base + 8)
+#else
+	.long	Ldyld_content_lazy_binder
+#endif
 #endif
 
 
@@ -178,6 +206,21 @@ L2:	popl	%eax
 
 #elif __x86_64__
 	jmp		*Ldyld_content_func_lookup(%rip)
+
+#elif __arm__
+	ldr		ip, L__dyld_func_lookup_pointer
+#if __PIC__
+L__dyld_func_lookup_pointer_base:
+	ldr		pc, [pc, ip]
+#else
+	ldr		pc, [ip]
+#endif
+L__dyld_func_lookup_pointer:
+#if __PIC__
+	.long	Ldyld_content_func_lookup - (L__dyld_func_lookup_pointer_base + 8)
+#else
+	.long	Ldyld_content_func_lookup
+#endif
 #endif
 
 
@@ -192,7 +235,7 @@ L2:	popl	%eax
 
 
 
-#if __ppc64__ || ((__i386__ || __ppc__) && __PIC__)
+#if __ppc64__ || ((__i386__ || __ppc__ || __arm__) && __PIC__)
 ////////////////////////////////////////////////////////////////////
 //
 // dyld__mach_header
@@ -223,6 +266,10 @@ dyld__mach_header:
 	Ldyld_base_addr =	0x8fe00000
 #elif __x86_64__
 	Ldyld_base_addr =	0x00007fff5fc00000
+#elif __arm__
+	Ldyld_base_addr =	0x2fe00000
+#else
+#error unknown architecture
 #endif
 	.dyld
 	.align_pointer

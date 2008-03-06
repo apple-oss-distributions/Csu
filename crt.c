@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999-2007 Apple Inc. All rights reserved.
+ * Copyright (c) 1999-2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -35,7 +35,6 @@
  */
 
 #include <stddef.h>
-#include <AvailabilityMacros.h>
 
 /*
  * Global data definitions (initialized data).
@@ -50,7 +49,7 @@ const char*   __progname = NULL;
  * This file is not needed for executables targeting 10.5 or later
  * start calls main() directly.
  */
-#if __DYNAMIC__ && (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5)
+#if __DYNAMIC__ && OLD_LIBSYSTEM_SUPPORT
 /*
  * The following symbols are reference by System Framework symbolicly (instead
  * of through undefined references (to allow prebinding). To get strip(1) to
@@ -339,4 +338,4 @@ _call_objcInit(void)
 
 #endif /* __DYNAMIC__ && __ppc__ */
 
-#endif /* __DYNAMIC__ && (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5) */
+#endif /* __DYNAMIC__ && OLD_LIBSYSTEM_SUPPORT */
